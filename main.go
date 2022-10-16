@@ -37,9 +37,9 @@ func main() {
 
 	fmt.Printf("booking for '%s' with %v in rooms %v @ y:%s m:%s d:%s h:%d:00=%d \n", cli.Username, cli.Participants, cli.Rooms, year, month, day, cli.Hour, hour)
 	fmt.Println("starting booking...")
-	sleep := time.Duration(10) * time.Millisecond
-	// try booking every 10 milliseconds for 5 seconds
-	for int := 0; int < 500; int++ {
+	sleep := time.Duration(1) * time.Second
+	// try booking every 1 second for 2 minutes
+	for int := 0; int < 120; int++ {
 		for _, room := range cli.Rooms {
 			booked := loginAndBook(cli.Username, cli.Password, year, month, day, fmt.Sprint(hour), room, cli.Participants)
 			if booked {
