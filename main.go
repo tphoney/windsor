@@ -15,14 +15,18 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-var cli struct {
-	Username     string   `help:"username" default:"thomas honey"`
-	Password     string   `help:"password" default:"password"`
-	Participants []string `help:"participants" default:"darragh lewis,ronan okane,gary toal"`
-	Day          string   `help:"specify date"`
-	Rooms        []string `help:"rooms" default:"28,27"`
-	Hour         int      `help:"hour" default:"20"`
-}
+var (
+	cli struct {
+		Username     string   `help:"username" default:"thomas honey"`
+		Password     string   `help:"password" default:"password"`
+		Participants []string `help:"participants" default:"darragh lewis,ronan okane,gary toal"`
+		Day          string   `help:"specify date"`
+		Rooms        []string `help:"rooms" default:"43,44,45,46,47"`
+		Hour         int      `help:"hour" default:"20"`
+		Area         string   `help:"area" default:"24"`
+	}
+	hostname = "dev.windsortennis.co.uk"
+)
 
 func main() {
 	// parse command line arguments
@@ -35,13 +39,13 @@ func main() {
 		day = cli.Day
 	}
 
-	fmt.Printf("booking for '%s' with %v in rooms %v @ y:%s m:%s d:%s h:%d:00=%d \n", cli.Username, cli.Participants, cli.Rooms, year, month, day, cli.Hour, hour)
+	fmt.Printf("booking for '%s' with %v in rooms %v area %q @ y:%s m:%s d:%s h:%d:00=%d \n", cli.Username, cli.Participants, cli.Rooms, cli.Area, year, month, day, cli.Hour, hour)
 	fmt.Println("starting booking...")
 	sleep := time.Duration(1) * time.Second
 	// try booking every 1 second for 2 minutes
 	for int := 0; int < 120; int++ {
 		for _, room := range cli.Rooms {
-			booked := loginAndBook(cli.Username, cli.Password, year, month, day, fmt.Sprint(hour), room, cli.Participants)
+			booked := loginAndBook(cli.Username, cli.Password, year, month, day, fmt.Sprint(hour), room, cli.Area, cli.Participants)
 			if booked {
 				fmt.Println("exiting")
 				os.Exit(0)
@@ -51,7 +55,7 @@ func main() {
 	}
 }
 
-func loginAndBook(username, password, year, month, day, hour, room string, participants []string) (success bool) {
+func loginAndBook(username, password, year, month, day, hour, room, area string, participants []string) (success bool) {
 	options := cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,
 	}
@@ -62,7 +66,7 @@ func loginAndBook(username, password, year, month, day, hour, room string, parti
 	}
 
 	client := http.Client{Jar: jar}
-	loginURL := fmt.Sprintf("https://www.windsortennis.co.uk/courtbooker/day.php?day=%s&month=%s&year=%s&area=13&room=3", day, month, year)
+	loginURL := fmt.Sprintf("https://%s/courtbooker/day.php?day=%s&month=%s&year=%s&area=%s", hostname, day, month, year, area)
 	resp, postErr := client.PostForm(loginURL,
 		url.Values{
 			"NewUserPassword": {password},
@@ -78,14 +82,15 @@ func loginAndBook(username, password, year, month, day, hour, room string, parti
 	contents := buf.String()
 	if !strings.Contains(contents, fmt.Sprintf("You are %s", username)) {
 		fmt.Println("failed to log in")
+		os.WriteFile("login_failure.html", []byte(contents), 0644)
 		return false
 	}
 	fmt.Println("logged in")
 	// lets book a court
-	bookingURL := "http://www.windsortennis.co.uk/courtbooker/edit_entry_handler.php"
+	bookingURL := fmt.Sprintf("http://%s/courtbooker/edit_entry_handler.php", hostname)
 	payload := url.Values{
 		"name":          {username},
-		"description":   {"robot booking"},
+		"description":   {" "},
 		"start_day":     {day},
 		"start_month":   {month},
 		"start_year":    {year},
@@ -94,7 +99,7 @@ func loginAndBook(username, password, year, month, day, hour, room string, parti
 		"end_month":     {month},
 		"end_year":      {year},
 		"end_seconds":   {hour},
-		"area":          {"13"}, // this is the dome
+		"area":          {area}, // this is the dome
 		"rooms":         {room},
 		"type":          {"A"},
 		"create_by":     {username},
@@ -113,7 +118,7 @@ func loginAndBook(username, password, year, month, day, hour, room string, parti
 	buf = new(bytes.Buffer)
 	buf.ReadFrom(resp.Body)
 	bookedContents := buf.String()
-	if strings.Contains(bookedContents, "robot booking") {
+	if strings.Contains(bookedContents, username) && strings.Contains(bookedContents, participants[0]) {
 		fmt.Println("booked")
 		return true
 	}
