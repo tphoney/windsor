@@ -34,18 +34,20 @@ func main() {
 		kong.Name("Windsor booking bot"),
 		kong.Description("A simple bot to book windsor tennis courts"))
 	hour := hoursToSeconds(cli.Hour)
+	endHour := hoursToSeconds(cli.Hour + 1)
 	year, month, day := eightDaysLater()
 	if cli.Day != "" {
 		day = cli.Day
 	}
 
-	fmt.Printf("booking for '%s' with %v in rooms %v area %q @ y:%s m:%s d:%s h:%d:00=%d \n", cli.Username, cli.Participants, cli.Rooms, cli.Area, year, month, day, cli.Hour, hour)
+	fmt.Printf("booking for '%s' with %v in rooms %v area %q @ y:%s m:%s d:%s h:%d:00=%s ending at h%d:00=%s\n",
+		cli.Username, cli.Participants, cli.Rooms, cli.Area, year, month, day, cli.Hour, hour, (cli.Hour + 1), endHour)
 	fmt.Println("starting booking...")
 	sleep := time.Duration(1) * time.Second
 	// try booking every 1 second for 2 minutes
 	for int := 0; int < 120; int++ {
 		for _, room := range cli.Rooms {
-			booked := loginAndBook(cli.Username, cli.Password, year, month, day, fmt.Sprint(hour), room, cli.Area, cli.Participants)
+			booked := loginAndBook(cli.Username, cli.Password, year, month, day, hour, endHour, room, cli.Area, cli.Participants)
 			if booked {
 				fmt.Println("exiting")
 				os.Exit(0)
@@ -55,7 +57,7 @@ func main() {
 	}
 }
 
-func loginAndBook(username, password, year, month, day, hour, room, area string, participants []string) (success bool) {
+func loginAndBook(username, password, year, month, day, hour, endHour, room, area string, participants []string) (success bool) {
 	options := cookiejar.Options{
 		PublicSuffixList: publicsuffix.List,
 	}
@@ -87,10 +89,10 @@ func loginAndBook(username, password, year, month, day, hour, room, area string,
 	}
 	fmt.Println("logged in")
 	// lets book a court
-	bookingURL := fmt.Sprintf("http://%s/courtbooker/edit_entry_handler.php", hostname)
+	bookingURL := fmt.Sprintf("https://%s/courtbooker/edit_entry_handler.php", hostname)
 	payload := url.Values{
 		"name":          {username},
-		"description":   {" "},
+		"description":   {},
 		"start_day":     {day},
 		"start_month":   {month},
 		"start_year":    {year},
@@ -98,14 +100,15 @@ func loginAndBook(username, password, year, month, day, hour, room, area string,
 		"end_day":       {day},
 		"end_month":     {month},
 		"end_year":      {year},
-		"end_seconds":   {hour},
+		"end_seconds":   {endHour},
 		"area":          {area}, // this is the dome
 		"rooms":         {room},
 		"type":          {"A"},
 		"create_by":     {username},
 		"rep_id":        {"0"},
-		"agree":         {"1"},
+		"confirmed":     {"1"},
 		"edit_type":     {"series"},
+		"agree":         {"1"},
 	}
 	for i, participant := range participants {
 		payload.Add(fmt.Sprintf("participant_%d", i+1), participant)
@@ -118,11 +121,11 @@ func loginAndBook(username, password, year, month, day, hour, room, area string,
 	buf = new(bytes.Buffer)
 	buf.ReadFrom(resp.Body)
 	bookedContents := buf.String()
-	if strings.Contains(bookedContents, username) && strings.Contains(bookedContents, participants[0]) {
-		fmt.Println("booked")
+	if strings.Contains(bookedContents, fmt.Sprintf(">%s</a>", username)) {
+		os.WriteFile("booked.html", []byte(bookedContents), 0644)
 		return true
 	}
-	fmt.Println("failed to book")
+	fmt.Printf("failed to book court %s\n", room)
 	// write the contents to a file
 	os.WriteFile("fail.html", []byte(contents), 0644)
 	return false
@@ -137,6 +140,7 @@ func eightDaysLater() (year, month, day string) {
 }
 
 // convert hours to seconds
-func hoursToSeconds(hours int) int {
-	return hours * 60 * 60
+func hoursToSeconds(hours int) string {
+	seconds := hours * 60 * 60
+	return fmt.Sprintf("%d", seconds)
 }
