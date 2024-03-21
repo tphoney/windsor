@@ -80,11 +80,11 @@ func loginAndBook(username, password, year, month, day, hour, endHour, room, are
 		return
 	}
 	buf := new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
+	_, _ = buf.ReadFrom(resp.Body)
 	contents := buf.String()
 	if !strings.Contains(contents, fmt.Sprintf("You are %s", username)) {
 		fmt.Println("failed to log in")
-		os.WriteFile("login_failure.html", []byte(contents), 0644)
+		_ = os.WriteFile("login_failure.html", []byte(contents), 0644)
 		return false
 	}
 	fmt.Println("logged in")
@@ -119,15 +119,15 @@ func loginAndBook(username, password, year, month, day, hour, endHour, room, are
 		return false
 	}
 	buf = new(bytes.Buffer)
-	buf.ReadFrom(resp.Body)
+	_, _ = buf.ReadFrom(resp.Body)
 	bookedContents := buf.String()
 	if strings.Contains(bookedContents, fmt.Sprintf(">%s</a>", username)) {
-		os.WriteFile("booked.html", []byte(bookedContents), 0644)
+		_ = os.WriteFile("booked.html", []byte(bookedContents), 0644)
 		return true
 	}
 	fmt.Printf("failed to book court %s\n", room)
 	// write the contents to a file
-	os.WriteFile("fail.html", []byte(contents), 0644)
+	_ = os.WriteFile("fail.html", []byte(contents), 0644)
 	return false
 }
 
