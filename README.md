@@ -36,3 +36,7 @@ Example usage:
 ```bash
 ./windsor --password=super_secret_password --username=joe blogs
 ```
+
+## Bonus feature
+
+There is also a python version of the go code as well.
