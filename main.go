@@ -19,7 +19,7 @@ var (
 	cli struct {
 		Username     string   `help:"username" default:"thomas honey"`
 		Password     string   `help:"password" default:"password"`
-		Participants []string `help:"participants" default:"darragh lewis,ronan okane,gary toal"`
+		Participants []string `help:"participants" default:"paul tynan,ronan okane,gary toal"`
 		Day          string   `help:"specify date"`
 		Rooms        []string `help:"rooms" default:"43,44,45,46,47"`
 		Hour         int      `help:"hour" default:"20"`
